@@ -109,6 +109,7 @@ class AlbumsNotifier extends StateNotifier<AlbumsState> {
       await _dio.delete('/media/albums/$albumId');
       state = state.copyWith(
         albums: state.albums.where((a) => a.id != albumId).toList(),
+        offset: (state.offset - 1).clamp(0, state.offset),
       );
     } catch (_) {}
   }
@@ -125,11 +126,25 @@ class AlbumsNotifier extends StateNotifier<AlbumsState> {
     if (isPrivate != null) data['is_private'] = isPrivate;
 
     await _dio.patch('/media/albums/$albumId', data: data);
+    state = state.copyWith(
+      albums: state.albums.map((a) {
+        if (a.id != albumId) return a;
+        return Album(
+          id: a.id,
+          createdAt: a.createdAt,
+          title: title ?? a.title,
+          description: description ?? a.description,
+          coverUrl: a.coverUrl,
+          isPrivate: isPrivate ?? a.isPrivate,
+          creator: a.creator,
+        );
+      }).toList(),
+    );
   }
 
-  void clearSearch() {
+  Future<void> clearSearch() async {
     state = const AlbumsState();
-    loadAlbums();
+    await loadAlbums();
   }
 }
 

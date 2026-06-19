@@ -40,30 +40,9 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _themeOption(
-                      ref,
-                      'Светлая',
-                      Icons.light_mode_outlined,
-                      ThemeModeOption.light,
-                      themeState.mode,
-                      isDark,
-                    ),
-                    _themeOption(
-                      ref,
-                      'Тёмная',
-                      Icons.dark_mode_outlined,
-                      ThemeModeOption.dark,
-                      themeState.mode,
-                      isDark,
-                    ),
-                    _themeOption(
-                      ref,
-                      'Системная',
-                      Icons.settings_brightness_outlined,
-                      ThemeModeOption.system,
-                      themeState.mode,
-                      isDark,
-                    ),
+                    _themeOption('Светлая', Icons.light_mode_outlined, ThemeModeOption.light, themeState.mode, isDark, (v) => ref.read(themeProvider.notifier).setTheme(v)),
+                    _themeOption('Тёмная', Icons.dark_mode_outlined, ThemeModeOption.dark, themeState.mode, isDark, (v) => ref.read(themeProvider.notifier).setTheme(v)),
+                    _themeOption('Системная', Icons.settings_brightness_outlined, ThemeModeOption.system, themeState.mode, isDark, (v) => ref.read(themeProvider.notifier).setTheme(v)),
                   ],
                 ),
               ),
@@ -75,27 +54,25 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _themeOption(
-    WidgetRef ref,
     String label,
     IconData icon,
     ThemeModeOption option,
-    ThemeModeOption current,
+    ThemeModeOption selectedMode,
     bool isDark,
+    ValueChanged<ThemeModeOption> onChanged,
   ) {
-    final selected = option == current;
-
     return RadioListTile<ThemeModeOption>(
       title: Row(
         children: [
-          Icon(icon, size: 20, color: selected ? Colors.red.shade400 : null),
+          Icon(icon, size: 20),
           const SizedBox(width: 12),
           Text(label),
         ],
       ),
       value: option,
-      groupValue: current,
+      groupValue: selectedMode,
+      onChanged: (v) => onChanged(v!),
       activeColor: Colors.red.shade400,
-      onChanged: (v) => ref.read(themeProvider.notifier).setTheme(v!),
     );
   }
 }

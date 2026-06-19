@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../shared/widgets/image_with_fallback.dart';
 import '../models/media_file.dart';
@@ -50,23 +52,89 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> {
   }
 
   Future<void> _pickAndUploadFiles() async {
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Выберите источник'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Камера'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Галерея'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
+    if (picked == null) return;
+
+    final file = File(picked.path);
+    final mimeType = picked.path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+    final titleCtrl = TextEditingController(
+      text: picked.name.split('.').first,
+    );
+    if (!mounted) return;
+
+    final title = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Название файла'),
+        content: TextField(
+          controller: titleCtrl,
+          decoration: const InputDecoration(labelText: 'Название'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, titleCtrl.text.trim()),
+            child: const Text('Загрузить'),
+          ),
+        ],
+      ),
+    );
+    if (title == null || title.isEmpty || !mounted) return;
+
     try {
       final dio = ref.read(dioClientProvider).dio;
       final presignResponse = await dio.post(
         '/media/files/upload',
-        data: {'content_type': 'image/jpeg', 'title': 'Uploaded from app'},
+        data: {
+          'content_type': mimeType,
+          'title': title,
+          'album_id': widget.albumId,
+        },
       );
       final fileId = presignResponse.data['url']['file_id'] as String;
       final presignedUrl =
           presignResponse.data['url']['presigned_url'] as String;
 
+      final bytes = await file.readAsBytes();
       await dio.put(
         presignedUrl,
-        data: 'placeholder',
+        data: bytes,
         options: Options(
-          headers: {'Content-Type': 'image/jpeg'},
+          headers: {'Content-Type': mimeType},
           extra: {'noAuth': true},
         ),
+        onSendProgress: (sent, total) {
+          if (total > 0) {}
+        },
       );
 
       await dio.post('/media/files/upload/confirm', data: {'file_id': fileId});
@@ -74,9 +142,9 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> {
       await _loadFiles();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка загрузки: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка загрузки: $e')),
+        );
       }
     }
   }
@@ -85,19 +153,7 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Альбом'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.upload),
-            onPressed: _pickAndUploadFiles,
-            tooltip: 'Загрузить файлы',
-          ),
-        ],
-      ),
-      body: _buildContent(isDark),
-    );
+    return _buildContent(isDark);
   }
 
   Widget _buildContent(bool isDark) {

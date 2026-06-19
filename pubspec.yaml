@@ -21,13 +21,10 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  fl_chart: ^0.70.2
   intl: ^0.20.2
   cached_network_image: ^3.4.1
   flutter_animate: ^4.5.2
   image_picker: ^1.1.2
-  path_provider: ^2.1.5
-  connectivity_plus: ^6.1.2
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import '../../../core/storage/local_cache.dart';
 
 enum ThemeModeOption { light, dark, system }
 
@@ -22,13 +23,14 @@ class ThemeState {
 }
 
 class ThemeNotifier extends StateNotifier<ThemeState> {
-  ThemeNotifier() : super(const ThemeState()) {
+  final Box _settingsBox;
+
+  ThemeNotifier(this._settingsBox) : super(const ThemeState()) {
     _loadTheme();
   }
 
   Future<void> _loadTheme() async {
-    final box = await Hive.openBox('settings');
-    final saved = box.get('themeMode', defaultValue: 'system') as String;
+    final saved = _settingsBox.get('themeMode', defaultValue: 'system') as String;
     final mode = ThemeModeOption.values.firstWhere(
       (e) => e.name == saved,
       orElse: () => ThemeModeOption.system,
@@ -38,11 +40,11 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
 
   Future<void> setTheme(ThemeModeOption mode) async {
     state = ThemeState(mode: mode);
-    final box = await Hive.openBox('settings');
-    await box.put('themeMode', mode.name);
+    await _settingsBox.put('themeMode', mode.name);
   }
 }
 
 final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeState>((ref) {
-  return ThemeNotifier();
+  final box = ref.watch(settingsBoxProvider);
+  return ThemeNotifier(box);
 });

@@ -12,12 +12,22 @@ import '../features/couple/screens/couple_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 
+class AuthRedirectNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
+final authRedirectNotifierProvider = ChangeNotifierProvider<AuthRedirectNotifier>((ref) {
+  return AuthRedirectNotifier();
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final authNotifier = ref.read(authRedirectNotifierProvider);
 
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: authNotifier,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isAuth = authState.isAuthenticated;
       final isLoginRoute = state.matchedLocation == '/login';
 
@@ -40,7 +50,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'album/:albumId',
                 builder: (_, state) => AlbumDetailScreen(
-                  albumId: state.pathParameters['albumId']!,
+                  albumId: state.pathParameters['albumId'] ?? '',
                 ),
               ),
             ],

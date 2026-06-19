@@ -72,6 +72,14 @@ class AuthInterceptor extends Interceptor {
           }
         } catch (_) {
           await _storage.deleteAccessToken();
+          for (final item in _failedQueue) {
+            item.handler.reject(DioException(
+              requestOptions: item.options,
+              error: 'Session expired',
+              type: DioExceptionType.badResponse,
+            ));
+          }
+          _failedQueue.clear();
         } finally {
           _isRefreshing = false;
         }

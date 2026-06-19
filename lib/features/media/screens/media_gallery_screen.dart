@@ -300,14 +300,22 @@ class _MediaGalleryScreenState extends ConsumerState<MediaGalleryScreen> {
       builder: (_) => EditAlbumDialog(album: album),
     );
     if (result != null) {
-      ref
-          .read(albumsProvider.notifier)
-          .updateAlbum(
-            album.id,
-            title: result['title'] as String?,
-            description: result['description'] as String?,
-            isPrivate: result['is_private'] as bool?,
+      try {
+        await ref
+            .read(albumsProvider.notifier)
+            .updateAlbum(
+              album.id,
+              title: result['title'] as String?,
+              description: result['description'] as String?,
+              isPrivate: result['is_private'] as bool?,
+            );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка обновления: $e')),
           );
+        }
+      }
     }
   }
 

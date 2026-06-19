@@ -94,17 +94,23 @@ class NotesNotifier extends StateNotifier<NotesState> {
   }
 
   Future<void> createNote({required NoteType type, required String content, String? title}) async {
-    await _dio.post('/notes', data: {
+    final response = await _dio.post('/notes', data: {
       'title': title,
       'content': content,
       'type': type.apiValue,
     });
+    final note = Note.fromJson(response.data as Map<String, dynamic>);
+    state = state.copyWith(
+      notes: [note, ...state.notes],
+      offset: state.offset + 1,
+    );
   }
 
   Future<void> deleteNote(String noteId) async {
     await _dio.delete('/notes/$noteId');
     state = state.copyWith(
       notes: state.notes.where((n) => n.id != noteId).toList(),
+      offset: (state.offset - 1).clamp(0, state.offset),
     );
   }
 }

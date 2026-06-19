@@ -13,10 +13,18 @@ class CoupleScreen extends ConsumerStatefulWidget {
 }
 
 class _CoupleScreenState extends ConsumerState<CoupleScreen> {
+  final _usernameCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(coupleProvider.notifier).loadCouple());
+  }
+
+  @override
+  void dispose() {
+    _usernameCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -101,8 +109,6 @@ class _CoupleScreenState extends ConsumerState<CoupleScreen> {
   }
 
   Widget _buildNoCouple(bool isDark) {
-    final usernameCtrl = TextEditingController();
-
     return Column(
       children: [
         Card(
@@ -126,7 +132,7 @@ class _CoupleScreenState extends ConsumerState<CoupleScreen> {
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: usernameCtrl,
+                        controller: _usernameCtrl,
                         decoration: const InputDecoration(
                           hintText: 'Имя пользователя',
                           prefixIcon: Icon(Icons.person_outline),
@@ -136,9 +142,9 @@ class _CoupleScreenState extends ConsumerState<CoupleScreen> {
                     const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: () async {
-                        if (usernameCtrl.text.trim().isEmpty) return;
-                        await ref.read(coupleProvider.notifier).sendRequest(usernameCtrl.text.trim());
-                        usernameCtrl.clear();
+                        if (_usernameCtrl.text.trim().isEmpty) return;
+                        await ref.read(coupleProvider.notifier).sendRequest(_usernameCtrl.text.trim());
+                        _usernameCtrl.clear();
                       },
                       child: const Text('Отправить'),
                     ),

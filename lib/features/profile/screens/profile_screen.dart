@@ -1,5 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_codes.dart';
+import '../../../core/network/dio_client.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -12,11 +15,14 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _currentPasswordCtrl = TextEditingController();
   final _newPasswordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
+  bool _isChangingPassword = false;
 
   @override
   void dispose() {
     _currentPasswordCtrl.dispose();
     _newPasswordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
     super.dispose();
   }
 
@@ -110,12 +116,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         prefixIcon: Icon(Icons.lock),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _confirmPasswordCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Подтвердите новый пароль',
+                        prefixIcon: Icon(Icons.lock),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _changePassword,
-                        child: const Text('Изменить пароль'),
+                        onPressed: _isChangingPassword ? null : _changePassword,
+                        child: Text(_isChangingPassword ? 'Смена...' : 'Изменить пароль'),
                       ),
                     ),
                   ],
@@ -132,18 +147,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return '${date.day}.${date.month}.${date.year}';
   }
 
-  void _changePassword() {
-    if (_currentPasswordCtrl.text.isEmpty || _newPasswordCtrl.text.isEmpty) {
+  Future<void> _changePassword() async {
+    final current = _currentPasswordCtrl.text;
+    final newPass = _newPasswordCtrl.text;
+    final confirm = _confirmPasswordCtrl.text;
+
+    if (current.isEmpty || newPass.isEmpty || confirm.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Заполните все поля')),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Пароль изменён')),
-    );
-    _currentPasswordCtrl.clear();
-    _newPasswordCtrl.clear();
+    if (newPass != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Новые пароли не совпадают')),
+      );
+      return;
+    }
+
+    setState(() => _isChangingPassword = true);
+    try {
+      final dio = ref.read(dioClientProvider).dio;
+      await dio.post(
+        '/auth/change-password',
+        data: {
+          'current_password': current,
+          'new_password': newPass,
+          'confirm_password': confirm,
+        },
+      );
+      _currentPasswordCtrl.clear();
+      _newPasswordCtrl.clear();
+      _confirmPasswordCtrl.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Пароль изменён')),
+        );
+      }
+    } on DioException catch (e) {
+      final detail = e.response?.data?['detail'] as String?;
+      final code = e.response?.data?['code'] as String?;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(translateApiCode(code ?? 'UNKNOWN', detail ?? 'Ошибка при смене пароля'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isChangingPassword = false);
+    }
   }
 }
